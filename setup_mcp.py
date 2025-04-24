@@ -1,10 +1,9 @@
 # Import necessary Python standard libraries
-import os          # For operating with file system, handling files and directory paths
-import json        # For processing JSON format data
-import subprocess  # For creating and managing subprocesses
-import sys         # For accessing Python interpreter related variables and functions
-import platform    # For getting current operating system information
-import shutil      # For checking if executables exist in PATH
+import os          
+import json        
+import subprocess  
+import sys         
+import shutil     
 
 def check_prerequisites():
     """
@@ -143,7 +142,7 @@ def generate_mcp_config_local(python_path):
     base_path = os.path.abspath(os.path.dirname(__file__))
     
     # Path to Word Document Server script
-    server_script_path = os.path.join(base_path, 'word_server.py')
+    server_script_path = os.path.join(base_path, 'word_mcp_server.py')
     
     # Create MCP configuration dictionary
     config = {
@@ -275,7 +274,7 @@ def create_package_structure():
     requirements_path = os.path.join(base_path, 'requirements.txt')
     if not os.path.exists(requirements_path):
         with open(requirements_path, 'w') as f:
-            f.write('mcp[cli]\npython-docx\n')
+            f.write('mcp[cli]\npython-docx\nmsoffcrypto-tool\ndocx2pdf\n')
         print(f"Created requirements.txt at: {requirements_path}")
 
 # Main execution entry point

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "office-word-mcp-server"
-version = "1.0.0"
+version = "1.1.0"
 description = "MCP server for manipulating Microsoft Word documents"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -27,8 +27,8 @@ dependencies = [
 "Bug Tracker" = "https://github.com/GongRzhe/Office-Word-MCP-Server.git/issues"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["word_server.py"]
+only-include = ["word_document_server"]
 sources = ["."]
 
 [project.scripts]
-word_mcp_server = "word_server:main"
+word_mcp_server = "word_document_server:main"
