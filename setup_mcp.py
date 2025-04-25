@@ -4,6 +4,7 @@ import json
 import subprocess  
 import sys         
 import shutil     
+import platform
 
 def check_prerequisites():
     """
@@ -226,11 +227,11 @@ def install_from_pypi():
     """
     print("\nInstalling word-document-server from PyPI...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "word-document-server"], check=True)
-        print("word-document-server successfully installed from PyPI!")
+        subprocess.run([sys.executable, "-m", "pip", "install", "office-word-mcp-server"], check=True)
+        print("office-word-mcp-server successfully installed from PyPI!")
         return True
     except subprocess.CalledProcessError:
-        print("Failed to install word-document-server from PyPI.")
+        print("Failed to install office-word-mcp-server from PyPI.")
         return False
 
 def print_config_instructions(config_path):

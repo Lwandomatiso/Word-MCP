@@ -1,13 +1,13 @@
 {
   "mcpServers": {
     "word-document-server": {
-      "command": "D:\\BackDataService\\WordMCPServer\\.venv\\Scripts\\python.exe",
+      "command": "uvx",
       "args": [
-        "D:\\BackDataService\\WordMCPServer\\word_server.py"
+        "--from",
+        "office-word-mcp-server",
+        "word_mcp_server"
       ],
-      "env": {
-        "PYTHONPATH": "D:\\BackDataService\\WordMCPServer"
-      }
+      "env": {}
     }
   }
 }

@@ -5,7 +5,6 @@ Acts as the central controller for the MCP server that handles Word document ope
 
 import os
 import sys
-import logging
 from mcp.server.fastmcp import FastMCP
 from word_document_server.tools import (
     document_tools,
@@ -16,15 +15,7 @@ from word_document_server.tools import (
     extended_document_tools
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger("word_document_server")
+
 
 # Initialize FastMCP server
 mcp = FastMCP("word-document-server")
@@ -67,8 +58,7 @@ def register_tools():
     mcp.tool()(extended_document_tools.get_paragraph_text_from_document)
     mcp.tool()(extended_document_tools.find_text_in_document)
     mcp.tool()(extended_document_tools.convert_to_pdf)
-    
-    logger.info(f"Registered MCP tools")
+
 
 def run_server():
     """Run the Word Document MCP Server."""
@@ -76,7 +66,6 @@ def run_server():
     register_tools()
     
     # Run the server
-    logger.info("Starting Word Document MCP Server")
     mcp.run(transport='stdio')
     return mcp
 
