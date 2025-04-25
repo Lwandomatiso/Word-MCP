@@ -6,11 +6,13 @@ A Model Context Protocol (MCP) server for creating, reading, and manipulating Mi
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@GongRzhe/Office-Word-MCP-Server/badge" alt="Office Word Server MCP server" />
 </a>
 
-![](https://badge.mcpx.dev?type=server 'MCP Server')
+![](https://badge.mcpx.dev?type=server "MCP Server")
 
 ## Overview
 
 Office-Word-MCP-Server implements the [Model Context Protocol](https://modelcontextprotocol.io/) to expose Word document operations as tools and resources. It serves as a bridge between AI assistants and Microsoft Word documents, allowing for document creation, content addition, formatting, and analysis.
+
+The server features a modular architecture that separates concerns into core functionality, tools, and utilities, making it highly maintainable and extensible for future enhancements.
 
 ### Example
 
@@ -22,44 +24,61 @@ Office-Word-MCP-Server implements the [Model Context Protocol](https://modelcont
 
 ![image](https://github.com/user-attachments/assets/ff64385d-3822-4160-8cdf-f8a484ccc01a)
 
-
 ## Features
 
 ### Document Management
+
 - Create new Word documents with metadata
 - Extract text and analyze document structure
 - View document properties and statistics
 - List available documents in a directory
 - Create copies of existing documents
+- Merge multiple documents into a single document
+- Convert Word documents to PDF format
 
 ### Content Creation
+
 - Add headings with different levels
 - Insert paragraphs with optional styling
 - Create tables with custom data
 - Add images with proportional scaling
 - Insert page breaks
+- Add footnotes and endnotes to documents
+- Convert footnotes to endnotes
+- Customize footnote and endnote styling
 
 ### Rich Text Formatting
+
 - Format specific text sections (bold, italic, underline)
 - Change text color and font properties
 - Apply custom styles to text elements
 - Search and replace text throughout documents
 
 ### Table Formatting
+
 - Format tables with borders and styles
 - Create header rows with distinct formatting
 - Apply cell shading and custom borders
 - Structure tables for better readability
 
 ### Advanced Document Manipulation
+
 - Delete paragraphs
 - Create custom document styles
 - Apply consistent formatting throughout documents
 - Format specific ranges of text with detailed control
 
+### Document Protection
+
+- Add password protection to documents
+- Implement restricted editing with editable sections
+- Add digital signatures to documents
+- Verify document authenticity and integrity
+
 ## Installation
 
 ### Prerequisites
+
 - Python 3.8 or higher
 - pip package manager
 
@@ -77,6 +96,7 @@ pip install -r requirements.txt
 ### Using the Setup Script
 
 Alternatively, you can use the provided setup script which handles:
+
 - Checking prerequisites
 - Setting up a virtual environment
 - Installing dependencies
@@ -99,9 +119,7 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "python",
-      "args": [
-        "/path/to/word_server.py"
-      ]
+      "args": ["/path/to/word_mcp_server.py"]
     }
   }
 }
@@ -116,15 +134,14 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "uvx",
-      "args": [
-        "--from", "office-word-mcp-server", "word_mcp_server"
-      ]
+      "args": ["--from", "office-word-mcp-server", "word_mcp_server"]
     }
   }
 }
 ```
 
 2. Configuration file locations:
+
    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
    - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
@@ -153,6 +170,7 @@ get_document_text(filename)
 get_document_outline(filename)
 list_available_documents(directory=".")
 copy_document(source_filename, destination_filename=None)
+convert_to_pdf(filename, output_filename=None)
 ```
 
 ### Content Addition
@@ -165,21 +183,29 @@ add_picture(filename, image_path, width=None)
 add_page_break(filename)
 ```
 
+### Content Extraction
+
+```python
+get_document_text(filename)
+get_paragraph_text_from_document(filename, paragraph_index)
+find_text_in_document(filename, text_to_find, match_case=True, whole_word=False)
+```
+
 ### Text Formatting
 
 ```python
-format_text(filename, paragraph_index, start_pos, end_pos, bold=None, 
+format_text(filename, paragraph_index, start_pos, end_pos, bold=None,
             italic=None, underline=None, color=None, font_size=None, font_name=None)
 search_and_replace(filename, find_text, replace_text)
 delete_paragraph(filename, paragraph_index)
-create_custom_style(filename, style_name, bold=None, italic=None, 
+create_custom_style(filename, style_name, bold=None, italic=None,
                     font_size=None, font_name=None, color=None, base_style=None)
 ```
 
 ### Table Formatting
 
 ```python
-format_table(filename, table_index, has_header_row=None, 
+format_table(filename, table_index, has_header_row=None,
              border_style=None, shading=None)
 ```
 
@@ -188,11 +214,13 @@ format_table(filename, table_index, has_header_row=None,
 ### Common Issues
 
 1. **Missing Styles**
+
    - Some documents may lack required styles for heading and table operations
    - The server will attempt to create missing styles or use direct formatting
    - For best results, use templates with standard Word styles
 
 2. **Permission Issues**
+
    - Ensure the server has permission to read/write to the document paths
    - Use the `copy_document` function to create editable copies of locked documents
    - Check file ownership and permissions if operations fail
@@ -233,4 +261,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Note: This server interacts with document files on your system. Always verify that requested operations are appropriate before confirming them in Claude for Desktop or other MCP clients.*
+_Note: This server interacts with document files on your system. Always verify that requested operations are appropriate before confirming them in Claude for Desktop or other MCP clients._
