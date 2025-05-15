@@ -1,5 +1,6 @@
 # Office-Word-MCP-Server
 
+[![smithery badge](https://smithery.ai/badge/@GongRzhe/Office-Word-MCP-Server)](https://smithery.ai/server/@GongRzhe/Office-Word-MCP-Server)
 A Model Context Protocol (MCP) server for creating, reading, and manipulating Microsoft Word documents. This server enables AI assistants to work with Word documents through a standardized interface, providing rich document editing capabilities.
 
 <a href="https://glama.ai/mcp/servers/@GongRzhe/Office-Word-MCP-Server">
@@ -76,6 +77,14 @@ The server features a modular architecture that separates concerns into core fun
 - Verify document authenticity and integrity
 
 ## Installation
+
+### Installing via Smithery
+
+To install Office Word Document Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@GongRzhe/Office-Word-MCP-Server):
+
+```bash
+npx -y @smithery/cli install @GongRzhe/Office-Word-MCP-Server --client claude
+```
 
 ### Prerequisites
 
