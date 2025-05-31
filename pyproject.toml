@@ -29,7 +29,10 @@ dependencies = [
 "Bug Tracker" = "https://github.com/GongRzhe/Office-Word-MCP-Server.git/issues"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["word_document_server"]
+only-include = [
+    "word_document_server",
+    "office_word_mcp_server",
+]
 sources = ["."]
 
 [project.scripts]
