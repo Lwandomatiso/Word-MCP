@@ -1,6 +1,7 @@
 # Office-Word-MCP-Server
 
 [![smithery badge](https://smithery.ai/badge/@GongRzhe/Office-Word-MCP-Server)](https://smithery.ai/server/@GongRzhe/Office-Word-MCP-Server)
+
 A Model Context Protocol (MCP) server for creating, reading, and manipulating Microsoft Word documents. This server enables AI assistants to work with Word documents through a standardized interface, providing rich document editing capabilities.
 
 <a href="https://glama.ai/mcp/servers/@GongRzhe/Office-Word-MCP-Server">
