@@ -35,6 +35,48 @@ def check_prerequisites():
         
     return (python_ok, uv_installed, uvx_installed, word_server_installed)
 
+def get_transport_choice():
+    """
+    Ask user to choose transport type
+    
+    Returns:
+        dict: Transport configuration
+    """
+    print("\nTransport Configuration:")
+    print("1. STDIO (default, local execution)")
+    print("2. Streamable HTTP (modern, recommended for web deployment)")
+    print("3. SSE (Server-Sent Events, for compatibility)")
+    
+    choice = input("\nSelect transport type (1-3, default: 1): ").strip()
+    
+    if choice == "2":
+        host = input("Host (default: 127.0.0.1): ").strip() or "127.0.0.1"
+        port = input("Port (default: 8000): ").strip() or "8000"
+        path = input("Path (default: /mcp): ").strip() or "/mcp"
+        
+        return {
+            "transport": "streamable-http",
+            "host": host,
+            "port": port,
+            "path": path
+        }
+    elif choice == "3":
+        host = input("Host (default: 127.0.0.1): ").strip() or "127.0.0.1"
+        port = input("Port (default: 8000): ").strip() or "8000"
+        sse_path = input("SSE Path (default: /sse): ").strip() or "/sse"
+        
+        return {
+            "transport": "sse",
+            "host": host,
+            "port": port,
+            "sse_path": sse_path
+        }
+    else:
+        # Default to stdio
+        return {
+            "transport": "stdio"
+        }
+
 def setup_venv():
     """
     Function to set up Python virtual environment
@@ -103,8 +145,8 @@ def setup_venv():
     # Install or update dependencies
     print("\nInstalling requirements...")
     try:
-        # Install mcp package
-        subprocess.run([pip_path, 'install', 'mcp[cli]'], check=True)
+        # Install FastMCP package (standalone library)
+        subprocess.run([pip_path, 'install', 'fastmcp'], check=True)
         # Install python-docx package
         subprocess.run([pip_path, 'install', 'python-docx'], check=True)
         
@@ -112,7 +154,6 @@ def setup_venv():
         requirements_path = os.path.join(base_path, 'requirements.txt')
         if os.path.exists(requirements_path):
             subprocess.run([pip_path, 'install', '-r', requirements_path], check=True)
-        
         
         print("Requirements installed successfully!")
     except subprocess.CalledProcessError as e:
@@ -130,12 +171,13 @@ def setup_venv():
     
     return python_path
 
-def generate_mcp_config_local(python_path):
+def generate_mcp_config_local(python_path, transport_config):
     """
     Generate MCP configuration for locally installed word-document-server
     
     Parameters:
     - python_path: Path to Python interpreter in the virtual environment
+    - transport_config: Transport configuration dictionary
     
     Returns: Path to the generated config file
     """
@@ -145,15 +187,34 @@ def generate_mcp_config_local(python_path):
     # Path to Word Document Server script
     server_script_path = os.path.join(base_path, 'word_mcp_server.py')
     
+    # Build environment variables
+    env = {
+        "PYTHONPATH": base_path,
+        "MCP_TRANSPORT": transport_config["transport"]
+    }
+    
+    # Add transport-specific environment variables
+    if transport_config["transport"] == "streamable-http":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_PATH": transport_config["path"]
+        })
+    elif transport_config["transport"] == "sse":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_SSE_PATH": transport_config["sse_path"]
+        })
+    # For stdio transport, no additional environment variables needed
+    
     # Create MCP configuration dictionary
     config = {
         "mcpServers": {
             "word-document-server": {
                 "command": python_path,
                 "args": [server_script_path],
-                "env": {
-                    "PYTHONPATH": base_path
-                }
+                "env": env
             }
         }
     }
@@ -161,26 +222,49 @@ def generate_mcp_config_local(python_path):
     # Save configuration to JSON file
     config_path = os.path.join(base_path, 'mcp-config.json')
     with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)  # indent=2 gives the JSON file good formatting
+        json.dump(config, f, indent=2)
     
     return config_path
 
-def generate_mcp_config_uvx():
+def generate_mcp_config_uvx(transport_config):
     """
     Generate MCP configuration for PyPI-installed word-document-server using UVX
+    
+    Parameters:
+    - transport_config: Transport configuration dictionary
     
     Returns: Path to the generated config file
     """
     # Get absolute path of the directory containing the current script
     base_path = os.path.abspath(os.path.dirname(__file__))
+    
+    # Build environment variables
+    env = {
+        "MCP_TRANSPORT": transport_config["transport"]
+    }
+    
+    # Add transport-specific environment variables
+    if transport_config["transport"] == "streamable-http":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_PATH": transport_config["path"]
+        })
+    elif transport_config["transport"] == "sse":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_SSE_PATH": transport_config["sse_path"]
+        })
+    # For stdio transport, no additional environment variables needed
     
     # Create MCP configuration dictionary
     config = {
         "mcpServers": {
             "word-document-server": {
                 "command": "uvx",
-                "args": ["--from", "office-word-mcp-server", "word_mcp_server"],
-                "env": {}
+                "args": ["--from", "word-mcp-server", "word_mcp_server"],
+                "env": env
             }
         }
     }
@@ -188,18 +272,41 @@ def generate_mcp_config_uvx():
     # Save configuration to JSON file
     config_path = os.path.join(base_path, 'mcp-config.json')
     with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)  # indent=2 gives the JSON file good formatting
+        json.dump(config, f, indent=2)
     
     return config_path
 
-def generate_mcp_config_module():
+def generate_mcp_config_module(transport_config):
     """
     Generate MCP configuration for PyPI-installed word-document-server using Python module
+    
+    Parameters:
+    - transport_config: Transport configuration dictionary
     
     Returns: Path to the generated config file
     """
     # Get absolute path of the directory containing the current script
     base_path = os.path.abspath(os.path.dirname(__file__))
+    
+    # Build environment variables
+    env = {
+        "MCP_TRANSPORT": transport_config["transport"]
+    }
+    
+    # Add transport-specific environment variables
+    if transport_config["transport"] == "streamable-http":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_PATH": transport_config["path"]
+        })
+    elif transport_config["transport"] == "sse":
+        env.update({
+            "MCP_HOST": transport_config["host"],
+            "MCP_PORT": transport_config["port"],
+            "MCP_SSE_PATH": transport_config["sse_path"]
+        })
+
     
     # Create MCP configuration dictionary
     config = {
@@ -207,7 +314,7 @@ def generate_mcp_config_module():
             "word-document-server": {
                 "command": sys.executable,
                 "args": ["-m", "word_document_server"],
-                "env": {}
+                "env": env
             }
         }
     }
@@ -215,7 +322,7 @@ def generate_mcp_config_module():
     # Save configuration to JSON file
     config_path = os.path.join(base_path, 'mcp-config.json')
     with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)  # indent=2 gives the JSON file good formatting
+        json.dump(config, f, indent=2)
     
     return config_path
 
@@ -227,19 +334,20 @@ def install_from_pypi():
     """
     print("\nInstalling word-document-server from PyPI...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "office-word-mcp-server"], check=True)
-        print("office-word-mcp-server successfully installed from PyPI!")
+        subprocess.run([sys.executable, "-m", "pip", "install", "word-mcp-server"], check=True)
+        print("word-mcp-server successfully installed from PyPI!")
         return True
     except subprocess.CalledProcessError:
-        print("Failed to install office-word-mcp-server from PyPI.")
+        print("Failed to install word-mcp-server from PyPI.")
         return False
 
-def print_config_instructions(config_path):
+def print_config_instructions(config_path, transport_config):
     """
     Print instructions for using the generated config
     
     Parameters:
     - config_path: Path to the generated config file
+    - transport_config: Transport configuration dictionary
     """
     print(f"\nMCP configuration has been written to: {config_path}")
     
@@ -248,6 +356,23 @@ def print_config_instructions(config_path):
     
     print("\nMCP configuration for Claude Desktop:")
     print(json.dumps(config, indent=2))
+    
+    # Print transport-specific instructions
+    if transport_config["transport"] == "streamable-http":
+        print(f"\n📡 Streamable HTTP Transport Configuration:")
+        print(f"   Server will be accessible at: http://{transport_config['host']}:{transport_config['port']}{transport_config['path']}")
+        print(f"   \n   To test the server manually:")
+        print(f"   curl -X POST http://{transport_config['host']}:{transport_config['port']}{transport_config['path']}")
+        
+    elif transport_config["transport"] == "sse":
+        print(f"\n📡 SSE Transport Configuration:")
+        print(f"   Server will be accessible at: http://{transport_config['host']}:{transport_config['port']}{transport_config['sse_path']}")
+        print(f"   \n   To test the server manually:")
+        print(f"   curl http://{transport_config['host']}:{transport_config['port']}{transport_config['sse_path']}")
+        
+    else:  # stdio
+        print(f"\n💻 STDIO Transport Configuration:")
+        print(f"   Server runs locally with standard input/output")
     
     # Provide instructions for adding configuration to Claude Desktop configuration file
     if platform.system() == "Windows":
@@ -259,7 +384,7 @@ def print_config_instructions(config_path):
 
 def create_package_structure():
     """
-    Create necessary package structure
+    Create necessary package structure and environment files
     """
     # Get absolute path of the directory containing the current script
     base_path = os.path.abspath(os.path.dirname(__file__))
@@ -275,8 +400,29 @@ def create_package_structure():
     requirements_path = os.path.join(base_path, 'requirements.txt')
     if not os.path.exists(requirements_path):
         with open(requirements_path, 'w') as f:
-            f.write('mcp[cli]\npython-docx\nmsoffcrypto-tool\ndocx2pdf\n')
+            f.write('fastmcp\npython-docx\nmsoffcrypto-tool\ndocx2pdf\nhttpx\ncryptography\n')
         print(f"Created requirements.txt at: {requirements_path}")
+    
+    # Create .env.example file
+    env_example_path = os.path.join(base_path, '.env.example')
+    if not os.path.exists(env_example_path):
+        with open(env_example_path, 'w') as f:
+            f.write("""# Transport Configuration
+# Valid options: stdio, streamable-http, sse
+MCP_TRANSPORT=stdio
+
+# HTTP/SSE Configuration (when not using stdio)
+MCP_HOST=127.0.0.1
+MCP_PORT=8000
+
+# Streamable HTTP specific
+MCP_PATH=/mcp
+
+# SSE specific  
+MCP_SSE_PATH=/sse
+
+""")
+        print(f"Created .env.example at: {env_example_path}")
 
 # Main execution entry point
 if __name__ == '__main__':
@@ -287,11 +433,14 @@ if __name__ == '__main__':
         print("Error: Python 3.8 or higher is required.")
         sys.exit(1)
     
-    print("Word Document MCP Server Setup")
-    print("=============================\n")
+    print("Word Document MCP Server Setup (Multi-Transport)")
+    print("===============================================\n")
     
     # Create necessary files
     create_package_structure()
+    
+    # Get transport configuration
+    transport_config = get_transport_choice()
     
     # If word-document-server is already installed, offer config options
     if word_server_installed:
@@ -306,15 +455,15 @@ if __name__ == '__main__':
             choice = input("\nEnter your choice (1-3): ")
             
             if choice == "1":
-                config_path = generate_mcp_config_uvx()
-                print_config_instructions(config_path)
+                config_path = generate_mcp_config_uvx(transport_config)
+                print_config_instructions(config_path, transport_config)
             elif choice == "2":
-                config_path = generate_mcp_config_module()
-                print_config_instructions(config_path)
+                config_path = generate_mcp_config_module(transport_config)
+                print_config_instructions(config_path, transport_config)
             elif choice == "3":
                 python_path = setup_venv()
-                config_path = generate_mcp_config_local(python_path)
-                print_config_instructions(config_path)
+                config_path = generate_mcp_config_local(python_path, transport_config)
+                print_config_instructions(config_path, transport_config)
             else:
                 print("Invalid choice. Exiting.")
                 sys.exit(1)
@@ -326,12 +475,12 @@ if __name__ == '__main__':
             choice = input("\nEnter your choice (1-2): ")
             
             if choice == "1":
-                config_path = generate_mcp_config_module()
-                print_config_instructions(config_path)
+                config_path = generate_mcp_config_module(transport_config)
+                print_config_instructions(config_path, transport_config)
             elif choice == "2":
                 python_path = setup_venv()
-                config_path = generate_mcp_config_local(python_path)
-                print_config_instructions(config_path)
+                config_path = generate_mcp_config_local(python_path, transport_config)
+                print_config_instructions(config_path, transport_config)
             else:
                 print("Invalid choice. Exiting.")
                 sys.exit(1)
@@ -350,17 +499,26 @@ if __name__ == '__main__':
             if install_from_pypi():
                 if uvx_installed:
                     print("\nNow generating MCP config for UVX...")
-                    config_path = generate_mcp_config_uvx()
+                    config_path = generate_mcp_config_uvx(transport_config)
                 else:
                     print("\nUVX not found. Generating MCP config for Python module...")
-                    config_path = generate_mcp_config_module()
-                print_config_instructions(config_path)
+                    config_path = generate_mcp_config_module(transport_config)
+                print_config_instructions(config_path, transport_config)
         elif choice == "2":
             python_path = setup_venv()
-            config_path = generate_mcp_config_local(python_path)
-            print_config_instructions(config_path)
+            config_path = generate_mcp_config_local(python_path, transport_config)
+            print_config_instructions(config_path, transport_config)
         else:
             print("Invalid choice. Exiting.")
             sys.exit(1)
     
     print("\nSetup complete! You can now use the Word Document MCP server with compatible clients like Claude Desktop.")
+    print("\nTransport Summary:")
+    print(f"  - Transport: {transport_config['transport']}")
+    if transport_config['transport'] != 'stdio':
+        print(f"  - Host: {transport_config.get('host', 'N/A')}")
+        print(f"  - Port: {transport_config.get('port', 'N/A')}")
+        if transport_config['transport'] == 'streamable-http':
+            print(f"  - Path: {transport_config.get('path', 'N/A')}")
+        elif transport_config['transport'] == 'sse':
+            print(f"  - SSE Path: {transport_config.get('sse_path', 'N/A')}")
