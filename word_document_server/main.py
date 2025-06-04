@@ -51,7 +51,7 @@ def register_tools():
     # Footnote tools
     mcp.tool()(footnote_tools.add_footnote_to_document)
     mcp.tool()(footnote_tools.add_endnote_to_document)
-    mcp.tool()(footnote_tools.convert_footnotes_to_endnotes_in_document)
+    # mcp.tool()(footnote_tools.convert_footnotes_to_endnotes_in_document)
     mcp.tool()(footnote_tools.customize_footnote_style)
     
     # Extended document tools
