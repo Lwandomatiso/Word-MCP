@@ -6,6 +6,8 @@ Supports multiple transports: stdio, sse, and streamable-http using standalone F
 
 import os
 import sys
+# Set required environment variable for FastMCP 2.8.1+
+os.environ.setdefault('FASTMCP_LOG_LEVEL', 'INFO')
 from fastmcp import FastMCP
 from word_document_server.tools import (
     document_tools,
