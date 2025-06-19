@@ -1,4 +1,4 @@
-mcp[cli]
+fastmcp
 python-docx
 msoffcrypto-tool
 docx2pdf
