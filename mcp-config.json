@@ -1,16 +1,13 @@
 {
   "mcpServers": {
     "word-document-server": {
-      "command": "C:\\Users\\Administrator\\Desktop\\Office-Word-MCP-Server\\.venv\\Scripts\\python.exe",
+      "command": "/Users/gongzhe/GitRepos/Office-Word-MCP-Server/.venv/bin/python",
       "args": [
-        "C:\\Users\\Administrator\\Desktop\\Office-Word-MCP-Server\\word_mcp_server.py"
+        "/Users/gongzhe/GitRepos/Office-Word-MCP-Server/word_mcp_server.py"
       ],
       "env": {
-        "PYTHONPATH": "C:\\Users\\Administrator\\Desktop\\Office-Word-MCP-Server",
-        "MCP_TRANSPORT": "streamable-http",
-        "MCP_HOST": "127.0.0.1",
-        "MCP_PORT": "8000",
-        "MCP_PATH": "/mcp"
+        "PYTHONPATH": "/Users/gongzhe/GitRepos/Office-Word-MCP-Server",
+        "MCP_TRANSPORT": "stdio"
       }
     }
   }
