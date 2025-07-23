@@ -165,3 +165,45 @@ def find_and_replace_text(doc, old_text, new_text):
                                 count += 1
     
     return count
+
+
+def get_document_xml(doc_path: str) -> str:
+    """Extract and return the raw XML structure of the Word document (word/document.xml)."""
+    import os
+    import zipfile
+    if not os.path.exists(doc_path):
+        return f"Document {doc_path} does not exist"
+    try:
+        with zipfile.ZipFile(doc_path) as docx_zip:
+            with docx_zip.open('word/document.xml') as xml_file:
+                return xml_file.read().decode('utf-8')
+    except Exception as e:
+        return f"Failed to extract XML: {str(e)}"
+
+
+def insert_header_near_text(doc_path: str, target_text: str, header_title: str, position: str = 'after', header_style: str = 'Heading 1') -> str:
+    """Insert a header (with specified style) before or after the first paragraph containing target_text."""
+    import os
+    from docx import Document
+    if not os.path.exists(doc_path):
+        return f"Document {doc_path} does not exist"
+    try:
+        doc = Document(doc_path)
+        found = False
+        for i, para in enumerate(doc.paragraphs):
+            if target_text in para.text:
+                found = True
+                # Create the new header paragraph with the specified style
+                new_para = doc.add_paragraph(header_title, style=header_style)
+                # Move the new paragraph to the correct position
+                if position == 'before':
+                    para._element.addprevious(new_para._element)
+                else:
+                    para._element.addnext(new_para._element)
+                break
+        if not found:
+            return f"Target text '{target_text}' not found in document."
+        doc.save(doc_path)
+        return f"Header '{header_title}' (style: {header_style}) inserted {position} paragraph containing '{target_text}'."
+    except Exception as e:
+        return f"Failed to insert header: {str(e)}"
