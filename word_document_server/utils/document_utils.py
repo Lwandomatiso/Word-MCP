@@ -207,3 +207,34 @@ def insert_header_near_text(doc_path: str, target_text: str, header_title: str, 
         return f"Header '{header_title}' (style: {header_style}) inserted {position} paragraph containing '{target_text}'."
     except Exception as e:
         return f"Failed to insert header: {str(e)}"
+
+
+def insert_line_or_paragraph_near_text(doc_path: str, target_text: str, line_text: str, position: str = 'after', line_style: str = None) -> str:
+    """
+    Insert a new line or paragraph (with specified or matched style) before or after the first paragraph containing target_text.
+    In Word, a new line is a new paragraph.
+    """
+    import os
+    from docx import Document
+    if not os.path.exists(doc_path):
+        return f"Document {doc_path} does not exist"
+    try:
+        doc = Document(doc_path)
+        found = False
+        for i, para in enumerate(doc.paragraphs):
+            if target_text in para.text:
+                found = True
+                # Determine style: use provided or match target
+                style = line_style if line_style else para.style
+                new_para = doc.add_paragraph(line_text, style=style)
+                if position == 'before':
+                    para._element.addprevious(new_para._element)
+                else:
+                    para._element.addnext(new_para._element)
+                break
+        if not found:
+            return f"Target text '{target_text}' not found in document."
+        doc.save(doc_path)
+        return f"Line/paragraph inserted {position} paragraph containing '{target_text}' with style '{style}'."
+    except Exception as e:
+        return f"Failed to insert line/paragraph: {str(e)}"

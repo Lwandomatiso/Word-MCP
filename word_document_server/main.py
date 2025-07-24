@@ -120,6 +120,14 @@ def register_tools():
     def insert_header_near_text(filename: str, target_text: str, header_title: str, position: str = 'after', header_style: str = 'Heading 1'):
         """Insert a header (with specified style) before or after the first paragraph containing target_text. Args: filename (str), target_text (str), header_title (str), position ('before' or 'after'), header_style (str, default 'Heading 1')."""
         return document_tools.insert_header_near_text_tool(filename, target_text, header_title, position, header_style)
+    
+    @mcp.tool()
+    def insert_line_or_paragraph_near_text(filename: str, target_text: str, line_text: str, position: str = 'after', line_style: str = None):
+        """
+        Insert a new line or paragraph (with specified or matched style) before or after the first paragraph containing target_text.
+        Args: filename (str), target_text (str), line_text (str), position ('before' or 'after'), line_style (str, optional).
+        """
+        return document_tools.insert_line_or_paragraph_near_text_tool(filename, target_text, line_text, position, line_style)
     # Content tools (paragraphs, headings, tables, etc.)
     @mcp.tool()
     def add_paragraph(filename: str, text: str, style: str = None):

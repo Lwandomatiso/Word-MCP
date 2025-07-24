@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 from docx import Document
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
-from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text
+from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
 from word_document_server.core.styles import ensure_heading_style, ensure_table_style
 
 
@@ -217,3 +217,10 @@ async def get_document_xml_tool(filename: str) -> str:
 async def insert_header_near_text_tool(filename: str, target_text: str, header_title: str, position: str = 'after', header_style: str = 'Heading 1') -> str:
     """Insert a header (with specified style) before or after the first paragraph containing target_text."""
     return insert_header_near_text(filename, target_text, header_title, position, header_style)
+
+
+async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: str, line_text: str, position: str = 'after', line_style: str = None) -> str:
+    """
+    Insert a new line or paragraph (with specified or matched style) before or after the first paragraph containing target_text.
+    """
+    return insert_line_or_paragraph_near_text(filename, target_text, line_text, position, line_style)
