@@ -12,7 +12,6 @@ from docx.enum.text import WD_COLOR_INDEX
 from docx.enum.style import WD_STYLE_TYPE
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension
-from word_document_server.utils.document_utils import find_and_replace_text
 from word_document_server.core.styles import create_style
 from word_document_server.core.tables import apply_table_style
 
