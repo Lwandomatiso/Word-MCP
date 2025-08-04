@@ -212,15 +212,3 @@ async def merge_documents(target_filename: str, source_filenames: List[str], add
 async def get_document_xml_tool(filename: str) -> str:
     """Get the raw XML structure of a Word document."""
     return get_document_xml(filename)
-
-
-async def insert_header_near_text_tool(filename: str, target_text: str, header_title: str, position: str = 'after', header_style: str = 'Heading 1') -> str:
-    """Insert a header (with specified style) before or after the first paragraph containing target_text."""
-    return insert_header_near_text(filename, target_text, header_title, position, header_style)
-
-
-async def insert_line_or_paragraph_near_text_tool(filename: str, target_text: str, line_text: str, position: str = 'after', line_style: str = None) -> str:
-    """
-    Insert a new line or paragraph (with specified or matched style) before or after the first paragraph containing target_text.
-    """
-    return insert_line_or_paragraph_near_text(filename, target_text, line_text, position, line_style)
