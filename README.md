@@ -77,6 +77,13 @@ The server features a modular architecture that separates concerns into core fun
 - Add digital signatures to documents
 - Verify document authenticity and integrity
 
+### Comment Extraction
+
+- Extract all comments from a document
+- Filter comments by author
+- Get comments for specific paragraphs
+- Access comment metadata (author, date, text)
+
 ## Installation
 
 ### Installing via Smithery
@@ -168,6 +175,9 @@ Once configured, you can ask Claude to perform operations like:
 - "Search and replace all instances of 'old term' with 'new term'"
 - "Create a custom style for section headings"
 - "Apply formatting to the table in my document"
+- "Extract all comments from my document"
+- "Show me all comments by John Doe"
+- "Get comments for paragraph 3"
 
 ## API Reference
 
@@ -217,6 +227,14 @@ create_custom_style(filename, style_name, bold=None, italic=None,
 ```python
 format_table(filename, table_index, has_header_row=None,
              border_style=None, shading=None)
+```
+
+### Comment Extraction
+
+```python
+get_all_comments(filename)
+get_comments_by_author(filename, author)
+get_comments_for_paragraph(filename, paragraph_index)
 ```
 
 ## Troubleshooting
