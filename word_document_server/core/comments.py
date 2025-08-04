@@ -28,19 +28,23 @@ def extract_all_comments(doc: DocumentType) -> List[Dict[str, Any]]:
         # Get the document part
         document_part = doc.part
         
-        # Try to access comments part
-        if hasattr(document_part, 'comments_part') and document_part.comments_part:
-            comments_part = document_part.comments_part
-            
-            # Extract comments from the comments part
-            comment_elements = comments_part.element.xpath('//w:comment')
+        # Find comments part through relationships
+        comments_part = None
+        for rel_id, rel in document_part.rels.items():
+            if 'comments' in rel.reltype and 'comments' == rel.reltype.split('/')[-1]:
+                comments_part = rel.target_part
+                break
+        
+        if comments_part:
+            # Extract comments from the comments part using proper xpath syntax
+            comment_elements = comments_part.element.xpath('.//w:comment')
             
             for idx, comment_element in enumerate(comment_elements):
                 comment_data = extract_comment_data(comment_element, idx)
                 if comment_data:
                     comments.append(comment_data)
         
-        # If no comments part or alternative approach
+        # If no comments found, try alternative approach
         if not comments:
             # Fallback: scan paragraphs for comment references
             comments = extract_comments_from_paragraphs(doc)
