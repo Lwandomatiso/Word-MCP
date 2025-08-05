@@ -4,6 +4,7 @@ Table-related operations for Word Document Server.
 from docx.oxml.shared import OxmlElement, qn
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
+from docx.shared import RGBColor
 
 
 def set_cell_border(cell, **kwargs):
@@ -137,3 +138,145 @@ def copy_table(source_table, target_doc):
                     new_table.cell(i, j).text = paragraph.text
     
     return new_table
+
+
+def set_cell_shading(cell, fill_color=None, pattern="clear", pattern_color="auto"):
+    """
+    Apply shading/filling to a table cell.
+    
+    Args:
+        cell: The table cell to format
+        fill_color: Background color (hex string like "FF0000" or RGBColor)
+        pattern: Shading pattern ("clear", "solid", "pct10", "pct20", etc.)
+        pattern_color: Pattern color for patterned fills
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Get or create table cell properties
+        tc_pr = cell._tc.get_or_add_tcPr()
+        
+        # Remove existing shading
+        existing_shd = tc_pr.find(qn('w:shd'))
+        if existing_shd is not None:
+            tc_pr.remove(existing_shd)
+        
+        # Create shading element
+        shd_attrs = {
+            'w:val': pattern,
+            'w:color': pattern_color if pattern_color != "auto" else "auto"
+        }
+        
+        # Set fill color
+        if fill_color:
+            if isinstance(fill_color, str):
+                # Hex color string - remove # if present
+                fill_color = fill_color.lstrip('#').upper()
+                if len(fill_color) == 6:  # Valid hex color
+                    shd_attrs['w:fill'] = fill_color
+            elif isinstance(fill_color, RGBColor):
+                # RGBColor object
+                hex_color = f"{fill_color.r:02X}{fill_color.g:02X}{fill_color.b:02X}"
+                shd_attrs['w:fill'] = hex_color
+        
+        # Build XML string
+        attr_str = ' '.join([f'{k}="{v}"' for k, v in shd_attrs.items()])
+        shd_xml = f'<w:shd {nsdecls("w")} {attr_str}/>'
+        
+        # Parse and append shading element
+        shading_elm = parse_xml(shd_xml)
+        tc_pr.append(shading_elm)
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error setting cell shading: {e}")
+        return False
+
+
+def apply_alternating_row_shading(table, color1="FFFFFF", color2="F2F2F2"):
+    """
+    Apply alternating row colors for better readability.
+    
+    Args:
+        table: The table to format
+        color1: Color for odd rows (hex string)
+        color2: Color for even rows (hex string)
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        for i, row in enumerate(table.rows):
+            fill_color = color1 if i % 2 == 0 else color2
+            for cell in row.cells:
+                set_cell_shading(cell, fill_color=fill_color)
+        return True
+    except Exception as e:
+        print(f"Error applying alternating row shading: {e}")
+        return False
+
+
+def highlight_header_row(table, header_color="4472C4", text_color="FFFFFF"):
+    """
+    Apply special shading to header row.
+    
+    Args:
+        table: The table to format
+        header_color: Background color for header (hex string)
+        text_color: Text color for header (hex string)
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        if table.rows:
+            for cell in table.rows[0].cells:
+                # Apply background shading
+                set_cell_shading(cell, fill_color=header_color)
+                
+                # Apply text formatting
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.bold = True
+                        if text_color and text_color != "auto":
+                            # Convert hex to RGB
+                            try:
+                                text_color = text_color.lstrip('#')
+                                r = int(text_color[0:2], 16)
+                                g = int(text_color[2:4], 16)
+                                b = int(text_color[4:6], 16)
+                                run.font.color.rgb = RGBColor(r, g, b)
+                            except:
+                                pass  # Skip if color format is invalid
+        return True
+    except Exception as e:
+        print(f"Error highlighting header row: {e}")
+        return False
+
+
+def set_cell_shading_by_position(table, row_index, col_index, fill_color, pattern="clear"):
+    """
+    Apply shading to a specific cell by row/column position.
+    
+    Args:
+        table: The table containing the cell
+        row_index: Row index (0-based)
+        col_index: Column index (0-based)
+        fill_color: Background color (hex string)
+        pattern: Shading pattern
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        if (0 <= row_index < len(table.rows) and 
+            0 <= col_index < len(table.rows[row_index].cells)):
+            cell = table.rows[row_index].cells[col_index]
+            return set_cell_shading(cell, fill_color=fill_color, pattern=pattern)
+        else:
+            return False
+    except Exception as e:
+        print(f"Error setting cell shading by position: {e}")
+        return False

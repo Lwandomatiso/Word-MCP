@@ -62,6 +62,9 @@ The server features a modular architecture that separates concerns into core fun
 - Create header rows with distinct formatting
 - Apply cell shading and custom borders
 - Structure tables for better readability
+- Individual cell background shading with color support
+- Alternating row colors for improved readability
+- Enhanced header row highlighting with custom colors
 
 ### Advanced Document Manipulation
 
@@ -217,6 +220,12 @@ create_custom_style(filename, style_name, bold=None, italic=None,
 ```python
 format_table(filename, table_index, has_header_row=None,
              border_style=None, shading=None)
+set_table_cell_shading(filename, table_index, row_index, col_index, 
+                      fill_color, pattern="clear")
+apply_table_alternating_rows(filename, table_index, 
+                            color1="FFFFFF", color2="F2F2F2")
+highlight_table_header(filename, table_index, 
+                      header_color="4472C4", text_color="FFFFFF")
 ```
 
 ## Troubleshooting

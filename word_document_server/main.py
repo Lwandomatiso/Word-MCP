@@ -198,6 +198,25 @@ def register_tools():
         """Format a table with borders, shading, and structure."""
         return format_tools.format_table(filename, table_index, has_header_row, border_style, shading)
     
+    # New table cell shading tools
+    @mcp.tool()
+    def set_table_cell_shading(filename: str, table_index: int, row_index: int, 
+                              col_index: int, fill_color: str, pattern: str = "clear"):
+        """Apply shading/filling to a specific table cell."""
+        return format_tools.set_table_cell_shading(filename, table_index, row_index, col_index, fill_color, pattern)
+    
+    @mcp.tool()
+    def apply_table_alternating_rows(filename: str, table_index: int, 
+                                   color1: str = "FFFFFF", color2: str = "F2F2F2"):
+        """Apply alternating row colors to a table for better readability."""
+        return format_tools.apply_table_alternating_rows(filename, table_index, color1, color2)
+    
+    @mcp.tool()
+    def highlight_table_header(filename: str, table_index: int, 
+                             header_color: str = "4472C4", text_color: str = "FFFFFF"):
+        """Apply special highlighting to table header row."""
+        return format_tools.highlight_table_header(filename, table_index, header_color, text_color)
+    
     # Protection tools
     @mcp.tool()
     def protect_document(filename: str, password: str):

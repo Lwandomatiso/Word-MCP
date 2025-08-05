@@ -13,7 +13,12 @@ from docx.enum.style import WD_STYLE_TYPE
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension
 from word_document_server.core.styles import create_style
-from word_document_server.core.tables import apply_table_style
+from word_document_server.core.tables import (
+    apply_table_style, 
+    set_cell_shading_by_position, 
+    apply_alternating_row_shading, 
+    highlight_header_row
+)
 
 
 async def format_text(filename: str, paragraph_index: int, start_pos: int, end_pos: int, 
@@ -225,3 +230,155 @@ async def format_table(filename: str, table_index: int,
             return f"Failed to format table at index {table_index}."
     except Exception as e:
         return f"Failed to format table: {str(e)}"
+
+
+async def set_table_cell_shading(filename: str, table_index: int, row_index: int, 
+                                col_index: int, fill_color: str, pattern: str = "clear") -> str:
+    """Apply shading/filling to a specific table cell.
+    
+    Args:
+        filename: Path to the Word document
+        table_index: Index of the table (0-based)
+        row_index: Row index of the cell (0-based)
+        col_index: Column index of the cell (0-based)
+        fill_color: Background color (hex string like "FF0000" or "red")
+        pattern: Shading pattern ("clear", "solid", "pct10", "pct20", etc.)
+    """
+    filename = ensure_docx_extension(filename)
+    
+    # Ensure numeric parameters are the correct type
+    try:
+        table_index = int(table_index)
+        row_index = int(row_index)
+        col_index = int(col_index)
+    except (ValueError, TypeError):
+        return "Invalid parameter: table_index, row_index, and col_index must be integers"
+    
+    if not os.path.exists(filename):
+        return f"Document {filename} does not exist"
+    
+    # Check if file is writeable
+    is_writeable, error_message = check_file_writeable(filename)
+    if not is_writeable:
+        return f"Cannot modify document: {error_message}. Consider creating a copy first."
+    
+    try:
+        doc = Document(filename)
+        
+        # Validate table index
+        if table_index < 0 or table_index >= len(doc.tables):
+            return f"Invalid table index. Document has {len(doc.tables)} tables (0-{len(doc.tables)-1})."
+        
+        table = doc.tables[table_index]
+        
+        # Validate row and column indices
+        if row_index < 0 or row_index >= len(table.rows):
+            return f"Invalid row index. Table has {len(table.rows)} rows (0-{len(table.rows)-1})."
+        
+        if col_index < 0 or col_index >= len(table.rows[row_index].cells):
+            return f"Invalid column index. Row has {len(table.rows[row_index].cells)} cells (0-{len(table.rows[row_index].cells)-1})."
+        
+        # Apply cell shading
+        success = set_cell_shading_by_position(table, row_index, col_index, fill_color, pattern)
+        
+        if success:
+            doc.save(filename)
+            return f"Cell shading applied successfully to table {table_index}, row {row_index}, column {col_index}."
+        else:
+            return f"Failed to apply cell shading."
+    except Exception as e:
+        return f"Failed to apply cell shading: {str(e)}"
+
+
+async def apply_table_alternating_rows(filename: str, table_index: int, 
+                                     color1: str = "FFFFFF", color2: str = "F2F2F2") -> str:
+    """Apply alternating row colors to a table for better readability.
+    
+    Args:
+        filename: Path to the Word document
+        table_index: Index of the table (0-based)
+        color1: Color for odd rows (hex string, default white)
+        color2: Color for even rows (hex string, default light gray)
+    """
+    filename = ensure_docx_extension(filename)
+    
+    # Ensure numeric parameters are the correct type
+    try:
+        table_index = int(table_index)
+    except (ValueError, TypeError):
+        return "Invalid parameter: table_index must be an integer"
+    
+    if not os.path.exists(filename):
+        return f"Document {filename} does not exist"
+    
+    # Check if file is writeable
+    is_writeable, error_message = check_file_writeable(filename)
+    if not is_writeable:
+        return f"Cannot modify document: {error_message}. Consider creating a copy first."
+    
+    try:
+        doc = Document(filename)
+        
+        # Validate table index
+        if table_index < 0 or table_index >= len(doc.tables):
+            return f"Invalid table index. Document has {len(doc.tables)} tables (0-{len(doc.tables)-1})."
+        
+        table = doc.tables[table_index]
+        
+        # Apply alternating row shading
+        success = apply_alternating_row_shading(table, color1, color2)
+        
+        if success:
+            doc.save(filename)
+            return f"Alternating row shading applied successfully to table {table_index}."
+        else:
+            return f"Failed to apply alternating row shading."
+    except Exception as e:
+        return f"Failed to apply alternating row shading: {str(e)}"
+
+
+async def highlight_table_header(filename: str, table_index: int, 
+                               header_color: str = "4472C4", text_color: str = "FFFFFF") -> str:
+    """Apply special highlighting to table header row.
+    
+    Args:
+        filename: Path to the Word document
+        table_index: Index of the table (0-based)
+        header_color: Background color for header (hex string, default blue)
+        text_color: Text color for header (hex string, default white)
+    """
+    filename = ensure_docx_extension(filename)
+    
+    # Ensure numeric parameters are the correct type
+    try:
+        table_index = int(table_index)
+    except (ValueError, TypeError):
+        return "Invalid parameter: table_index must be an integer"
+    
+    if not os.path.exists(filename):
+        return f"Document {filename} does not exist"
+    
+    # Check if file is writeable
+    is_writeable, error_message = check_file_writeable(filename)
+    if not is_writeable:
+        return f"Cannot modify document: {error_message}. Consider creating a copy first."
+    
+    try:
+        doc = Document(filename)
+        
+        # Validate table index
+        if table_index < 0 or table_index >= len(doc.tables):
+            return f"Invalid table index. Document has {len(doc.tables)} tables (0-{len(doc.tables)-1})."
+        
+        table = doc.tables[table_index]
+        
+        # Apply header highlighting
+        success = highlight_header_row(table, header_color, text_color)
+        
+        if success:
+            doc.save(filename)
+            return f"Header highlighting applied successfully to table {table_index}."
+        else:
+            return f"Failed to apply header highlighting."
+    except Exception as e:
+        return f"Failed to apply header highlighting: {str(e)}"
