@@ -198,6 +198,57 @@ def register_tools():
         """Format a table with borders, shading, and structure."""
         return format_tools.format_table(filename, table_index, has_header_row, border_style, shading)
     
+    # New table cell shading tools
+    @mcp.tool()
+    def set_table_cell_shading(filename: str, table_index: int, row_index: int, 
+                              col_index: int, fill_color: str, pattern: str = "clear"):
+        """Apply shading/filling to a specific table cell."""
+        return format_tools.set_table_cell_shading(filename, table_index, row_index, col_index, fill_color, pattern)
+    
+    @mcp.tool()
+    def apply_table_alternating_rows(filename: str, table_index: int, 
+                                   color1: str = "FFFFFF", color2: str = "F2F2F2"):
+        """Apply alternating row colors to a table for better readability."""
+        return format_tools.apply_table_alternating_rows(filename, table_index, color1, color2)
+    
+    @mcp.tool()
+    def highlight_table_header(filename: str, table_index: int, 
+                             header_color: str = "4472C4", text_color: str = "FFFFFF"):
+        """Apply special highlighting to table header row."""
+        return format_tools.highlight_table_header(filename, table_index, header_color, text_color)
+    
+    # Cell merging tools
+    @mcp.tool()
+    def merge_table_cells(filename: str, table_index: int, start_row: int, start_col: int, 
+                        end_row: int, end_col: int):
+        """Merge cells in a rectangular area of a table."""
+        return format_tools.merge_table_cells(filename, table_index, start_row, start_col, end_row, end_col)
+    
+    @mcp.tool()
+    def merge_table_cells_horizontal(filename: str, table_index: int, row_index: int, 
+                                   start_col: int, end_col: int):
+        """Merge cells horizontally in a single row."""
+        return format_tools.merge_table_cells_horizontal(filename, table_index, row_index, start_col, end_col)
+    
+    @mcp.tool()
+    def merge_table_cells_vertical(filename: str, table_index: int, col_index: int, 
+                                 start_row: int, end_row: int):
+        """Merge cells vertically in a single column."""
+        return format_tools.merge_table_cells_vertical(filename, table_index, col_index, start_row, end_row)
+    
+    # Cell alignment tools
+    @mcp.tool()
+    def set_table_cell_alignment(filename: str, table_index: int, row_index: int, col_index: int,
+                               horizontal: str = "left", vertical: str = "top"):
+        """Set text alignment for a specific table cell."""
+        return format_tools.set_table_cell_alignment(filename, table_index, row_index, col_index, horizontal, vertical)
+    
+    @mcp.tool()
+    def set_table_alignment_all(filename: str, table_index: int, 
+                              horizontal: str = "left", vertical: str = "top"):
+        """Set text alignment for all cells in a table."""
+        return format_tools.set_table_alignment_all(filename, table_index, horizontal, vertical)
+    
     # Protection tools
     @mcp.tool()
     def protect_document(filename: str, password: str):
@@ -257,6 +308,48 @@ def register_tools():
     def replace_block_between_manual_anchors(filename: str, start_anchor_text: str, new_paragraphs: list, end_anchor_text: str = None, match_fn=None, new_paragraph_style: str = None):
         """Replace all content between start_anchor_text and end_anchor_text (or next logical header if not provided)."""
         return replace_block_between_manual_anchors_tool(filename, start_anchor_text, new_paragraphs, end_anchor_text, match_fn, new_paragraph_style)
+
+    # New table column width tools
+    @mcp.tool()
+    def set_table_column_width(filename: str, table_index: int, col_index: int, 
+                              width: float, width_type: str = "points"):
+        """Set the width of a specific table column."""
+        return format_tools.set_table_column_width(filename, table_index, col_index, width, width_type)
+
+    @mcp.tool()
+    def set_table_column_widths(filename: str, table_index: int, widths: list, 
+                               width_type: str = "points"):
+        """Set the widths of multiple table columns."""
+        return format_tools.set_table_column_widths(filename, table_index, widths, width_type)
+
+    @mcp.tool()
+    def set_table_width(filename: str, table_index: int, width: float, 
+                       width_type: str = "points"):
+        """Set the overall width of a table."""
+        return format_tools.set_table_width(filename, table_index, width, width_type)
+
+    @mcp.tool()
+    def auto_fit_table_columns(filename: str, table_index: int):
+        """Set table columns to auto-fit based on content."""
+        return format_tools.auto_fit_table_columns(filename, table_index)
+
+    # New table cell text formatting and padding tools
+    @mcp.tool()
+    def format_table_cell_text(filename: str, table_index: int, row_index: int, col_index: int,
+                               text_content: str = None, bold: bool = None, italic: bool = None,
+                               underline: bool = None, color: str = None, font_size: int = None,
+                               font_name: str = None):
+        """Format text within a specific table cell."""
+        return format_tools.format_table_cell_text(filename, table_index, row_index, col_index,
+                                                   text_content, bold, italic, underline, color, font_size, font_name)
+
+    @mcp.tool()
+    def set_table_cell_padding(filename: str, table_index: int, row_index: int, col_index: int,
+                               top: float = None, bottom: float = None, left: float = None, 
+                               right: float = None, unit: str = "points"):
+        """Set padding/margins for a specific table cell."""
+        return format_tools.set_table_cell_padding(filename, table_index, row_index, col_index,
+                                                   top, bottom, left, right, unit)
 
 
 
