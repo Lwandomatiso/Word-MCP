@@ -15,7 +15,8 @@ from word_document_server.tools import (
     format_tools,
     protection_tools,
     footnote_tools,
-    extended_document_tools
+    extended_document_tools,
+    comment_tools
 )
 from word_document_server.tools.content_tools import replace_paragraph_block_below_header_tool
 from word_document_server.tools.content_tools import replace_block_between_manual_anchors_tool
@@ -309,6 +310,21 @@ def register_tools():
         """Replace all content between start_anchor_text and end_anchor_text (or next logical header if not provided)."""
         return replace_block_between_manual_anchors_tool(filename, start_anchor_text, new_paragraphs, end_anchor_text, match_fn, new_paragraph_style)
 
+    # Comment tools
+    @mcp.tool()
+    def get_all_comments(filename: str):
+        """Extract all comments from a Word document."""
+        return comment_tools.get_all_comments(filename)
+    
+    @mcp.tool()
+    def get_comments_by_author(filename: str, author: str):
+        """Extract comments from a specific author in a Word document."""
+        return comment_tools.get_comments_by_author(filename, author)
+    
+    @mcp.tool()
+    def get_comments_for_paragraph(filename: str, paragraph_index: int):
+        """Extract comments for a specific paragraph in a Word document."""
+        return comment_tools.get_comments_for_paragraph(filename, paragraph_index)
     # New table column width tools
     @mcp.tool()
     def set_table_column_width(filename: str, table_index: int, col_index: int, 
