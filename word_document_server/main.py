@@ -4,27 +4,36 @@ Acts as the central controller for the MCP server that handles Word document ope
 Supports multiple transports: stdio, sse, and streamable-http using standalone FastMCP.
 """
 
+import logging
 import os
 import sys
+from fastapi import FastAPI, Request, Response
+
 from dotenv import load_dotenv
+from fastmcp import FastMCP
 
 # Load environment variables from .env file
 print("Loading configuration from .env file...")
 load_dotenv()
+
 # Set required environment variable for FastMCP 2.8.1+
 os.environ.setdefault('FASTMCP_LOG_LEVEL', 'INFO')
-from fastmcp import FastMCP
+
+# Import tools
 from word_document_server.tools import (
-    document_tools,
+    comment_tools,
     content_tools,
-    format_tools,
-    protection_tools,
-    footnote_tools,
+    document_tools,
     extended_document_tools,
-    comment_tools
+    footnote_tools,
+    format_tools,
+    protection_tools
 )
-from word_document_server.tools.content_tools import replace_paragraph_block_below_header_tool
-from word_document_server.tools.content_tools import replace_block_between_manual_anchors_tool
+from word_document_server.tools.content_tools import (
+    replace_block_between_manual_anchors_tool,
+    replace_paragraph_block_below_header_tool
+)
+from word_document_server.tools.document_tools import temp_files as document_tools_temp_files
 
 def get_transport_config():
     """
@@ -85,11 +94,17 @@ def setup_logging(debug_mode):
 
 # Initialize FastMCP server
 mcp = FastMCP("Word Document Server")
-
+app = FastAPI()
 
 def register_tools():
     """Register all tools with the MCP server using FastMCP decorators."""
     
+    #Create in memory
+    @mcp.tool()
+    def create_temp(filename: str, title: str = None, author: str = None):
+        """Create a new Word document in memory and return a temporary download link."""
+        return document_tools.create_temp(filename, title, author)
+
     # Document tools (create, copy, info, etc.)
     @mcp.tool()
     def create_document(filename: str, title: str = None, author: str = None):
@@ -460,40 +475,76 @@ def register_tools():
 
 def run_server():
     """Run the Word Document MCP Server with configurable transport."""
-    # Get transport configuration
     config = get_transport_config()
-    
-    # Setup logging
-    # setup_logging(config['debug'])
-    
-    # Register all tools
     register_tools()
     
-    # Print startup information
     transport_type = config['transport']
     print(f"Starting Word Document MCP Server with {transport_type} transport...")
     
-    # if config['debug']:
-    #     print(f"Configuration: {config}")
-    
     try:
         if transport_type == 'stdio':
-            # Run with stdio transport (default, backward compatible)
             print("Server running on stdio transport")
             mcp.run(transport='stdio')
             
         elif transport_type == 'streamable-http':
-            # Run with streamable HTTP transport
-            print(f"Server running on streamable-http transport at http://{config['host']}:{config['port']}{config['path']}")
+            # For streamable-http, we'll use FastMCP's built-in HTTP server
+            # and run a separate FastAPI app for the download endpoint
+            import uvicorn
+            from fastapi import FastAPI, Response
+            from fastapi.middleware.cors import CORSMiddleware
+            import threading
+            
+            # Create a new FastAPI app for the download endpoint
+            download_app = FastAPI(title="Word Document Download Server")
+            
+            # Add CORS middleware to allow requests from any origin
+            download_app.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+            
+            # Add the download endpoint
+            @download_app.get("/mcp/download/{file_id}")
+            async def download(file_id: str):
+                file_entry = document_tools_temp_files.get(file_id)
+                if not file_entry:
+                    return Response("File not found or expired", status_code=404)
+
+                filename = file_entry["filename"]
+                file_bytes = file_entry["bytes"]
+
+                return Response(
+                    content=file_bytes,
+                    media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+                )
+            
+            # Use a different port for the download server
+            download_port = config['port'] + 1
+            
+            # Start the download server in a separate thread
+            def run_download_server():
+                uvicorn.run(download_app, host=config['host'], port=download_port)
+            
+            download_thread = threading.Thread(target=run_download_server, daemon=True)
+            download_thread.start()
+            
+            print(f"MCP server running on http://{config['host']}:{config['port']}")
+            print(f"MCP endpoint: http://{config['host']}:{config['port']}{config['path']}")
+            print(f"Download endpoint: http://{config['host']}:{download_port}/mcp/download/{{file_id}}")
+            
+            # Run the MCP server in the main thread
             mcp.run(
-                transport='streamable-http',
+                transport='http',
                 host=config['host'],
                 port=config['port'],
                 path=config['path']
             )
             
         elif transport_type == 'sse':
-            # Run with SSE transport
             print(f"Server running on SSE transport at http://{config['host']}:{config['port']}{config['sse_path']}")
             mcp.run(
                 transport='sse',
@@ -506,7 +557,7 @@ def run_server():
         print("\nShutting down server...")
     except Exception as e:
         print(f"Error starting server: {e}")
-        if config['debug']:
+        if config.get('debug'):
             import traceback
             traceback.print_exc()
         sys.exit(1)
