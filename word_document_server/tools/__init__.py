@@ -26,6 +26,7 @@ __all__ = [
     'add_table_of_contents',
     'delete_paragraph',
     'search_and_replace',
+    'add_paragraph_temp',
     
     # Format tools
     'format_text',
