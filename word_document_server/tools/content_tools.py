@@ -8,6 +8,9 @@ import os
 from typing import List, Optional, Dict, Any
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
+from io import BytesIO
+from word_document_server.tools.document_tools import temp_files
+
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension
 from word_document_server.utils.document_utils import find_and_replace_text, insert_header_near_text, insert_numbered_list_near_text, insert_line_or_paragraph_near_text, replace_paragraph_block_below_header, replace_block_between_manual_anchors
@@ -479,3 +482,67 @@ async def replace_paragraph_block_below_header_tool(filename: str, header_text: 
 async def replace_block_between_manual_anchors_tool(filename: str, start_anchor_text: str, new_paragraphs: list, end_anchor_text: str = None, match_fn=None, new_paragraph_style: str = None) -> str:
     """Replace all content between start_anchor_text and end_anchor_text (or next logical header if not provided)."""
     return replace_block_between_manual_anchors(filename, start_anchor_text, new_paragraphs, end_anchor_text, match_fn, new_paragraph_style)
+
+async def add_paragraph_temp(file_id: str, text: str, style: Optional[str] = None,
+                        font_name: Optional[str] = None, font_size: Optional[int] = None,
+                        bold: Optional[bool] = None, italic: Optional[bool] = None,
+                        color: Optional[str] = None) -> str:
+    """Add a paragraph to an in memory Word document with optional formatting.
+
+    Args:
+        filename: Path to the Word document
+        text: Paragraph text
+        style: Optional paragraph style name
+        font_name: Font family (e.g., 'Helvetica', 'Times New Roman')
+        font_size: Font size in points (e.g., 14, 36)
+        bold: True/False for bold text
+        italic: True/False for italic text
+        color: RGB color as hex string (e.g., '000000' for black)
+    """
+    if file_id not in temp_files:
+        return f"No document found for ID {file_id}"
+
+    try:
+        # Load document from memory
+        buffer = BytesIO(temp_files[file_id]["bytes"])
+        buffer.seek(0)
+        doc = Document(buffer)
+
+        # Add paragraph
+        paragraph = doc.add_paragraph(text)
+
+        if style:
+            try:
+                paragraph.style = style
+            except KeyError:
+                # Style doesn't exist, use normal and report it
+                paragraph.style = doc.styles['Normal']
+                new_buffer = BytesIO()
+                doc.save(new_buffer)
+                temp_files[file_id]["bytes"] = new_buffer.getvalue()
+                return f"Style '{style}' not found, paragraph added with default style to {temp_files[file_id]['filename']}"
+
+        # Apply formatting to all runs in the paragraph
+        if any([font_name, font_size, bold is not None, italic is not None, color]):
+            for run in paragraph.runs:
+                if font_name:
+                    run.font.name = font_name
+                if font_size:
+                    run.font.size = Pt(font_size)
+                if bold is not None:
+                    run.font.bold = bold
+                if italic is not None:
+                    run.font.italic = italic
+                if color:
+                    # Remove any '#' prefix if present
+                    color_hex = color.lstrip('#')
+                    run.font.color.rgb = RGBColor.from_string(color_hex)
+
+        new_buffer = BytesIO()
+        doc.save(new_buffer)
+        temp_files[file_id]["bytes"] = new_buffer.getvalue()
+
+        return f"Paragraph added to {temp_files[file_id]['filename']}"
+
+    except Exception as e:
+        return f"Failed to add paragraph: {str(e)}"

@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, Response
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
+from word_document_server.tools.document_tools import temp_files as document_tools_temp_files
 # Load environment variables from .env file
 print("Loading configuration from .env file...")
 load_dotenv()
@@ -19,21 +20,7 @@ load_dotenv()
 # Set required environment variable for FastMCP 2.8.1+
 os.environ.setdefault('FASTMCP_LOG_LEVEL', 'INFO')
 
-# Import tools
-from word_document_server.tools import (
-    comment_tools,
-    content_tools,
-    document_tools,
-    extended_document_tools,
-    footnote_tools,
-    format_tools,
-    protection_tools
-)
-from word_document_server.tools.content_tools import (
-    replace_block_between_manual_anchors_tool,
-    replace_paragraph_block_below_header_tool
-)
-from word_document_server.tools.document_tools import temp_files as document_tools_temp_files
+# Tool imports will be done inside the register_tools function to prevent circular imports
 
 def get_transport_config():
     """
@@ -98,13 +85,46 @@ app = FastAPI()
 
 def register_tools():
     """Register all tools with the MCP server using FastMCP decorators."""
+    # Import tools here to avoid circular imports
+    from word_document_server.tools import (
+        comment_tools,
+        content_tools,
+        document_tools,
+        extended_document_tools,
+        footnote_tools,
+        format_tools,
+        protection_tools
+    )
+    from word_document_server.tools.content_tools import (
+        replace_block_between_manual_anchors_tool,
+        replace_paragraph_block_below_header_tool
+    )
+    
     
     #Create in memory
     @mcp.tool()
     def create_temp(filename: str, title: str = None, author: str = None):
         """Create a new Word document in memory and return a temporary download link."""
         return document_tools.create_temp(filename, title, author)
+    #Add paragraph to in memory
+    @mcp.tool()
+    def add_paragraph_temp(file_id: str, text: str, style: str = None,
+                      font_name: str = None, font_size: int = None,
+                      bold: bool = None, italic: bool = None, color: str = None):
+        """Add a paragraph to an in memory Word document with optional formatting.
 
+        Args:
+            file_id: ID of the Word document
+            text: Paragraph text content
+            style: Optional paragraph style name
+            font_name: Font family (e.g., 'Helvetica', 'Times New Roman')
+            font_size: Font size in points (e.g., 14, 36)
+            bold: Make text bold
+            italic: Make text italic
+            color: Text color as hex RGB (e.g., '000000')
+        """
+        return content_tools.add_paragraph_temp(file_id, text, style, font_name, font_size, bold, italic, color)
+   
     # Document tools (create, copy, info, etc.)
     @mcp.tool()
     def create_document(filename: str, title: str = None, author: str = None):
