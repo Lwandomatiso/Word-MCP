@@ -3,6 +3,9 @@ Document creation and manipulation tools for Word Document Server.
 """
 import os
 import json
+import uuid
+from fastmcp import FastMCP
+from io import BytesIO
 from typing import Dict, List, Optional, Any
 from docx import Document
 
@@ -212,3 +215,68 @@ async def merge_documents(target_filename: str, source_filenames: List[str], add
 async def get_document_xml_tool(filename: str) -> str:
     """Get the raw XML structure of a Word document."""
     return get_document_xml(filename)
+
+# -------------------------------
+# 1️⃣ FastAPI app and MCP server
+# -------------------------------
+
+
+# -------------------------------
+# 2️⃣ In-memory storage for docs
+# -------------------------------
+# key: file_id (UUID), value: {"filename": str, "bytes": bytes}
+temp_files = {}
+
+# -------------------------------
+# 3️⃣ MCP tool: create_document
+# -------------------------------
+async def create_temp(
+    filename: str, 
+    title: Optional[str] = None, 
+    author: Optional[str] = None
+) -> dict:
+    """
+    Create a Word document in memory and return a temporary download link.
+
+    Returns:
+        {"download_url": str, "file_id": str} on success
+        {"error": str} on failure
+    """
+    # Ensure .docx extension
+    if not filename.lower().endswith(".docx"):
+        filename += ".docx"
+
+    try:
+        # Create document
+        doc = Document()
+        if title:
+            doc.core_properties.title = title
+        if author:
+            doc.core_properties.author = author
+
+        # (Optional) add default styles if needed
+        # ensure_heading_style(doc)
+        # ensure_table_style(doc)
+
+        # Save to BytesIO
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        # Store in memory with UUID
+        file_id = str(uuid.uuid4())
+        temp_files[file_id] = {
+            "filename": filename,
+            "bytes": buffer.getvalue()
+        }
+
+        # Return temporary download link (using port 8001 for download server)
+        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        return {"download_url": download_url, "file_id": file_id}
+
+    except Exception as e:
+        return {"error": f"Failed to create document: {str(e)}"}
+
+# -------------------------------
+# 4️⃣ FastAPI endpoint: download
+# -------------------------------
