@@ -4,6 +4,7 @@ Document creation and manipulation tools for Word Document Server.
 import os
 import json
 import uuid
+import httpx
 from fastmcp import FastMCP
 from io import BytesIO
 from typing import Dict, List, Optional, Any
@@ -280,3 +281,111 @@ async def create_temp(
 # -------------------------------
 # 4️⃣ FastAPI endpoint: download
 # -------------------------------
+async def load_document_from_url(url: str, filename: str = None) -> dict:
+    """
+    Load a Word document from a pre-signed URL into memory for editing.
+    
+    Args:
+        url: Pre-signed URL to the .docx file
+        filename: Optional custom filename (defaults to the original filename)
+        
+    Returns:
+        {"download_url": str, "file_id": str, "filename": str} on success
+        {"error": str} on failure
+    """
+    import httpx
+    
+    try:
+        # Download the document
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            
+            # Check if it's actually a Word document
+            content_type = response.headers.get('content-type', '')
+            if 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' not in content_type:
+                return {"error": "The URL does not point to a valid Word document"}
+                
+            docx_bytes = response.content
+        
+        # Generate a filename if not provided
+        if not filename:
+            content_disp = response.headers.get('content-disposition', '')
+            if 'filename=' in content_disp:
+                filename = content_disp.split('filename=')[1].strip('"\'')
+            else:
+                # Try to extract from URL
+                from urllib.parse import unquote, urlparse
+                path = unquote(urlparse(url).path)
+                filename = os.path.basename(path) or f"document_{uuid.uuid4().hex[:8]}.docx"
+        
+        # Ensure .docx extension
+        if not filename.lower().endswith('.docx'):
+            filename += '.docx'
+            
+        # Store in memory
+        file_id = str(uuid.uuid4())
+        temp_files[file_id] = {
+            "filename": filename,
+            "bytes": docx_bytes
+        }
+        
+        # Return download URL
+        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        return {
+            "download_url": download_url,
+            "file_id": file_id,
+            "filename": filename
+        }
+        
+    except httpx.HTTPStatusError as e:
+        return {"error": f"HTTP error: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Failed to load document: {str(e)}"}
+
+
+async def load_example_document() -> dict:
+    """
+    Load an example Word document from a pre-signed URL into memory.
+    
+    Returns:
+        {"download_url": str, "file_id": str, "filename": str} on success
+        {"error": str} on failure
+    """
+    # Pre-signed URL for the example document
+    example_url = "https://flowise-branchai.s3.us-east-1.amazonaws.com/Exampleword.docx?response-content-disposition=inline&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEJv%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFN4k15gIqv1h7%2F%2FmflgmHRPNWZVBWNnWzV2e%2BG6qrgNAiBOcvXoTwVS0vZRQIblUOIRr3aXQHaYtevbidSzu04CQSq5AwhkEAMaDDgyNzAxMTI0OTgwOCIM52Fo9r7U9IMjfp3vKpYDPvf%2B4LNPunss0d7sJ7ugmT9jnfNK1C7OYFpWlFAzGeiFu7Z%2Ftkd4ZFUmGXCqqb6Q%2F2OXcXpXam33rsOqRF9LJgbU68BirPW1Lad%2FpL4ZLQa8hjLkC2y4nNLKpeSLJ2L7yDgOiVXsTzAHejgdgdQCiQ2i2zIkCHpvRvtZOkekZbhbkJeC5K79Ev7OrNmQmwAiyrJgzwsCr248JAgtsCK4vSbxaMjjyb1ldtbx1PGQYo%2F4ly%2BcSHKkPH%2BVGy9jVm5SIJWv5CHU8etlzXsncl4gVa2D2keykMytD212x1%2FOiElSUuwiL%2Fhy7fgRmsrhyRNSr684wV%2BDaWP%2FevMo6w5SdQP8mi4rNp7cKzUzvlqu4wSgBzSNvwd86OodhoQqNyZF0%2BampPTE2zA6sCOP8HGkL1Zs%2Fps%2FrAH%2Bp21%2BHL3P%2F%2FSnxjYb%2F8y3hRWf5YPlOphKWdE65L0MyCeKnxIHv%2FjaCuX25ZvODU%2FqRa8%2FV1l8Gag0%2FQj%2B8j%2BktT8QPCtOG2nvDg2oGA73A4nWem7e17NUeo8xHN%2FZ%2FDCuh6PIBjrfAuRhvOSUGZkWcIcXslfdO4RzbH0WwAiW13LDaRS5qY4qQg1rQLXK3q4QwOPAP2w2xT1QvkWfTRw2fR%2FL5ysXFOq6my49U68M60GqUH%2BSFH%2BaCejFuRO3Xlkca05tYJVmAhCUdw31CSKhohFu2FSlR%2BusgTbh8GNTAUTwmIVNrSjThTScKR6VmC5sYWFf1hKbraXxGsVnucEtNgApBwXuDAIgG6YRIdrX7MC2bqq5JLzj7OKFcS6omRJPqLH%2FZKdDHR%2Fplp0ZwOVB7KC9f3Fxe8vLCwR7N1mU6TvLRQlJ9NykBCVo8YWSLU5EdxDp16X7ow6PJmq3%2Bc1L5be99FiHmESIZvUSN5se6FDvU0%2BTtMS%2FOqjGrOCXa9gUlatQAO5j1a5w2QisOABgIb5Fr%2FVDP%2B66EqAW7BLUQgqkvmN2nmre3UkF8HwCyotSSPDja20u0y205yEZwcJDthi3pUX6HA%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA4BDNWG2IJFBQENAN%2F20251103%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251103T185208Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=975c2656b9e1ba7734d33888d41d48156d39adf63dc2d728864581bd948b6fa2"
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(example_url)
+            response.raise_for_status()
+            
+            # Check if it's actually a Word document
+            content_type = response.headers.get('content-type', '')
+            if 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' not in content_type:
+                return {"error": "The URL does not point to a valid Word document"}
+                
+            docx_bytes = response.content
+        
+        # Generate a filename
+        filename = "example_document.docx"
+            
+        # Store in memory
+        file_id = str(uuid.uuid4())
+        temp_files[file_id] = {
+            "filename": filename,
+            "bytes": docx_bytes
+        }
+        
+        # Return download URL
+        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        return {
+            "download_url": download_url,
+            "file_id": file_id,
+            "filename": filename
+        }
+        
+    except httpx.HTTPStatusError as e:
+        return {"error": f"HTTP error: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Failed to load example document: {str(e)}"}

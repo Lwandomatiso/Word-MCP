@@ -16,7 +16,9 @@ __all__ = [
     'list_available_documents',
     'copy_document',
     'merge_documents',
-    
+    'load_document_from_url',
+    'load_example_document',
+
     # Content tools
     'add_heading',
     'add_paragraph',
@@ -55,7 +57,7 @@ __all__ = [
 from word_document_server.tools.document_tools import (
     create_document, create_temp, get_document_info, get_document_text, 
     get_document_outline, list_available_documents, 
-    copy_document, merge_documents
+    copy_document, merge_documents, load_document_from_url, load_example_document
 )
 
 # Content tools

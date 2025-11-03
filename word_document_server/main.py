@@ -490,7 +490,16 @@ def register_tools():
         """Set padding/margins for a specific table cell."""
         return format_tools.set_table_cell_padding(filename, table_index, row_index, col_index,
                                                    top, bottom, left, right, unit)
-
+    
+    @mcp.tool()
+    def load_document_from_url(url: str, filename: str = None) -> dict:
+        """Load a Word document from a pre-signed URL into memory for editing."""
+        return document_tools.load_document_from_url(url, filename)
+        
+    @mcp.tool()
+    async def load_example_document() -> dict:
+        """Load an example document from a pre-signed URL."""
+        return await document_tools.load_example_document()
 
 
 def run_server():
