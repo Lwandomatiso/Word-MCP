@@ -293,7 +293,7 @@ async def load_template() -> dict:
     """
     # S3 configuration
     bucket_name = os.getenv('S3_BUCKET_NAME')
-    object_key = 'Exampleword.docx'  # The key of your example document in S3
+    object_key = 'ROA_Template_2.docx'  # The key of your example document in S3
     
     if not bucket_name:
         return {"error": "S3_BUCKET_NAME environment variable not set"}
@@ -321,8 +321,7 @@ async def load_template() -> dict:
                 
             docx_bytes = response.content
         
-        # Generate a filename
-        filename = "example_document.docx"
+        filename = "Record_of_advice.docx"
             
         # Store in memory
         file_id = str(uuid.uuid4())
