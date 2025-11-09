@@ -562,7 +562,7 @@ def run_server():
             
             # Run the MCP server in the main thread
             mcp.run(
-                transport='http',
+                transport='streamable-http',
                 host=config['host'],
                 port=config['port'],
                 path=config['path']
