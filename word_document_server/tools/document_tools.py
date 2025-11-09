@@ -3,8 +3,13 @@ Document creation and manipulation tools for Word Document Server.
 """
 import os
 import json
+import uuid
+import httpx
+from fastmcp import FastMCP
+from io import BytesIO
 from typing import Dict, List, Optional, Any
 from docx import Document
+from word_document_server.utils.s3_utils import generate_presigned_url
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
 from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
@@ -212,3 +217,129 @@ async def merge_documents(target_filename: str, source_filenames: List[str], add
 async def get_document_xml_tool(filename: str) -> str:
     """Get the raw XML structure of a Word document."""
     return get_document_xml(filename)
+
+# -------------------------------
+# 1️⃣ FastAPI app and MCP server
+# -------------------------------
+
+
+# -------------------------------
+# 2️⃣ In-memory storage for docs
+# -------------------------------
+# key: file_id (UUID), value: {"filename": str, "bytes": bytes}
+temp_files = {}
+
+# -------------------------------
+# 3️⃣ MCP tool: create_document
+# -------------------------------
+async def create_temp(
+    filename: str, 
+    title: Optional[str] = None, 
+    author: Optional[str] = None
+) -> dict:
+    """
+    Create a Word document in memory and return a temporary download link.
+
+    Returns:
+        {"download_url": str, "file_id": str} on success
+        {"error": str} on failure
+    """
+    # Ensure .docx extension
+    if not filename.lower().endswith(".docx"):
+        filename += ".docx"
+
+    try:
+        # Create document
+        doc = Document()
+        if title:
+            doc.core_properties.title = title
+        if author:
+            doc.core_properties.author = author
+
+        # (Optional) add default styles if needed
+        # ensure_heading_style(doc)
+        # ensure_table_style(doc)
+
+        # Save to BytesIO
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        # Store in memory with UUID
+        file_id = str(uuid.uuid4())
+        temp_files[file_id] = {
+            "filename": filename,
+            "bytes": buffer.getvalue()
+        }
+
+        # Return temporary download link (using port 8001 for download server)
+        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        return {"download_url": download_url, "file_id": file_id}
+
+    except Exception as e:
+        return {"error": f"Failed to create document: {str(e)}"}
+
+# -------------------------------
+# 4️⃣ FastAPI endpoint: download
+# -------------------------------
+
+async def load_template() -> dict:
+    """
+    Load a template Word document from S3 using a presigned URL.
+    
+    Returns:
+        {"download_url": str, "file_id": str, "filename": str} on success
+        {"error": str} on failure
+    """
+    # S3 configuration
+    bucket_name = os.getenv('S3_BUCKET_NAME')
+    object_key = 'Exampleword.docx'  # The key of your example document in S3
+    
+    if not bucket_name:
+        return {"error": "S3_BUCKET_NAME environment variable not set"}
+    
+    try:
+        # Generate a presigned URL for the S3 object
+        presigned_url = generate_presigned_url(
+            bucket_name=bucket_name,
+            object_key=object_key,
+            expiration=86400  # 24 hours expiration
+        )
+        
+        if not presigned_url:
+            return {"error": "Failed to generate presigned URL"}
+            
+        # Download the file using the presigned URL
+        async with httpx.AsyncClient() as client:
+            response = await client.get(presigned_url)
+            response.raise_for_status()
+            
+            # Check if it's actually a Word document
+            content_type = response.headers.get('content-type', '')
+            if 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' not in content_type:
+                return {"error": "The URL does not point to a valid Word document"}
+                
+            docx_bytes = response.content
+        
+        # Generate a filename
+        filename = "example_document.docx"
+            
+        # Store in memory
+        file_id = str(uuid.uuid4())
+        temp_files[file_id] = {
+            "filename": filename,
+            "bytes": docx_bytes
+        }
+        
+        # Return download URL
+        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        return {
+            "download_url": download_url,
+            "file_id": file_id,
+            "filename": filename
+        }
+        
+    except httpx.HTTPStatusError as e:
+        return {"error": f"HTTP error: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Failed to load document: {str(e)}"}
