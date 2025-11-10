@@ -273,7 +273,7 @@ async def create_temp(
         }
 
         # Return temporary download link (using port 8001 for download server)
-        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        download_url = f"http://127.0.0.1:8081/mcp/download/{file_id}"
         return {"download_url": download_url, "file_id": file_id}
 
     except Exception as e:
@@ -293,7 +293,7 @@ async def load_template() -> dict:
     """
     # S3 configuration
     bucket_name = os.getenv('S3_BUCKET_NAME')
-    object_key = 'ROA_Template_2.docx'  # The key of your example document in S3
+    object_key = os.getenv('S3_OBJECT_KEY')  # The key of your example document in S3
     
     if not bucket_name:
         return {"error": "S3_BUCKET_NAME environment variable not set"}
@@ -331,7 +331,7 @@ async def load_template() -> dict:
         }
         
         # Return download URL
-        download_url = f"http://127.0.0.1:8001/mcp/download/{file_id}"
+        download_url = f"http://127.0.0.1:8081/mcp/download/{file_id}"
         return {
             "download_url": download_url,
             "file_id": file_id,

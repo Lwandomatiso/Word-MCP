@@ -13,10 +13,22 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
-COPY . /app
+COPY . .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir .
+# Install Python dependencies with S3 support
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e .[s3]
+
+# Expose ports
+EXPOSE 8080
+
+# Set environment variables
+ENV PORT=8080
+ENV MCP_PORT=8080
+ENV MCP_TRANSPORT=streamable-http
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PATH=/mcp
+ENV PYTHONUNBUFFERED=1
 
 # Default command
 ENTRYPOINT ["word_mcp_server"]
