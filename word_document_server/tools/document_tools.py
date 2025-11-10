@@ -36,7 +36,7 @@ def get_base_url(request: Optional[Union[Request, StarletteRequest]] = None) -> 
     # If we have a request object, try to construct from headers
     if request:
         scheme = request.headers.get('X-Forwarded-Proto', 'http')
-        host = request.headers.get('Host', 'localhost:8081')
+        host = request.headers.get('Host', '')  # Let it fail if host is not provided
         return f"{scheme}://{host}"
     
     # Default fallback for local development
