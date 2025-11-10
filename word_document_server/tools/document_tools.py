@@ -6,10 +6,41 @@ import json
 import uuid
 import httpx
 from fastmcp import FastMCP
+from fastapi import Request
 from io import BytesIO
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from docx import Document
+from starlette.requests import Request as StarletteRequest
 from word_document_server.utils.s3_utils import generate_presigned_url
+
+def get_base_url(request: Optional[Union[Request, StarletteRequest]] = None) -> str:
+    """
+    Get the base URL for download links.
+    
+    Priority:
+    1. BASE_URL environment variable
+    2. Request headers (X-Forwarded-Proto and Host) if request is provided
+    3. Default to http://localhost:8081
+    
+    Args:
+        request: Optional FastAPI or Starlette request object
+        
+    Returns:
+        Base URL as a string
+    """
+    # First check for environment variable
+    base_url = os.getenv('BASE_URL')
+    if base_url:
+        return base_url.rstrip('/')
+    
+    # If we have a request object, try to construct from headers
+    if request:
+        scheme = request.headers.get('X-Forwarded-Proto', 'http')
+        host = request.headers.get('Host', 'localhost:8081')
+        return f"{scheme}://{host}"
+    
+    # Default fallback for local development
+    return "http://localhost:8081"
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
 from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
@@ -272,8 +303,9 @@ async def create_temp(
             "bytes": buffer.getvalue()
         }
 
-        # Return temporary download link (using port 8001 for download server)
-        download_url = f"http://127.0.0.1:8081/mcp/download/{file_id}"
+        # Return temporary download link
+        base_url = get_base_url()
+        download_url = f"{base_url}/mcp/download/{file_id}"
         return {"download_url": download_url, "file_id": file_id}
 
     except Exception as e:
@@ -331,7 +363,8 @@ async def load_template() -> dict:
         }
         
         # Return download URL
-        download_url = f"http://127.0.0.1:8081/mcp/download/{file_id}"
+        base_url = get_base_url()
+        download_url = f"{base_url}/mcp/download/{file_id}"
         return {
             "download_url": download_url,
             "file_id": file_id,
