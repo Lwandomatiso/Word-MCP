@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -235,9 +236,18 @@ def register_tools():
         return content_tools.delete_paragraph(filename, paragraph_index)
     
     @mcp.tool()
-    def search_and_replace(filename: str, find_text: str, replace_text: str):
-        """Search for text and replace all occurrences."""
-        return content_tools.search_and_replace(filename, find_text, replace_text)
+    def search_and_replace(file_id: str, find_text: str, replace_text: str):
+        """Search for text and replace all occurrences in an in-memory document.
+        
+        Args:
+            file_id: The ID of the in-memory document to modify
+            find_text: Text to search for
+            replace_text: Text to replace with
+            
+        Returns:
+            str: Status message indicating success or failure
+        """
+        return content_tools.search_and_replace(file_id, find_text, replace_text)
     
     # Format tools (styling, text formatting, etc.)
     @mcp.tool()
@@ -496,6 +506,20 @@ def register_tools():
         """Load an example document from a pre-signed URL."""
         return await document_tools.load_template()
 
+    @mcp.tool()
+    async def upload_get_url(file_id: str, filename: str = None, expires: int = 600) -> str:
+        """Upload an in-memory document to S3 and return a presigned URL.
+    
+        Args:
+            file_id: ID of the in-memory document to upload
+            filename: Optional name for the file in S3. If not provided, uses the original filename.
+            expires: URL expiration time in seconds (default: 600)
+            
+        Returns:
+            str: Presigned URL for the uploaded file or error message if upload fails
+        """
+        return await document_tools.upload_get_url(file_id, filename, expires)
+
 
 def run_server():
     """Run the Word Document MCP Server with configurable transport."""
@@ -530,6 +554,24 @@ def run_server():
                 allow_headers=["*"],
             )
             
+            # Add root endpoint
+            @download_app.get("/")
+            async def root():
+                return {"status": "ok", "service": "Word Document Download Server"}
+                
+            # Add health check endpoint
+            @download_app.get("/healthz")
+            async def health_check():
+                return {"status": "healthy"}
+                
+            # Handle 404s to prevent warnings
+            @download_app.middleware("http")
+            async def catch_all_middleware(request: Request, call_next):
+                try:
+                    return await call_next(request)
+                except Exception as e:
+                    return Response("Not Found", status_code=404)
+            
             # Add the download endpoint
             @download_app.get("/mcp/download/{file_id}")
             async def download(file_id: str):
@@ -551,7 +593,19 @@ def run_server():
             
             # Start the download server in a separate thread
             def run_download_server():
-                uvicorn.run(download_app, host=config['host'], port=download_port)
+                import uvicorn.config
+                # Configure logging to reduce noise
+                config_logging = uvicorn.config.LOGGING_CONFIG
+                config_logging["loggers"]["uvicorn"]["level"] = "WARNING"
+                config_logging["loggers"]["uvicorn.error"]["level"] = "WARNING"
+                config_logging["loggers"]["uvicorn.access"]["level"] = "WARNING"
+                
+                uvicorn.run(
+                    download_app, 
+                    host=config['host'], 
+                    port=download_port,
+                    log_config=config_logging
+                )
             
             download_thread = threading.Thread(target=run_download_server, daemon=True)
             download_thread.start()
@@ -560,7 +614,18 @@ def run_server():
             print(f"MCP endpoint: http://{config['host']}:{config['port']}{config['path']}")
             print(f"Download endpoint: http://{config['host']}:{download_port}/mcp/download/{{file_id}}")
             
-            # Run the MCP server in the main thread
+            # Configure and run the MCP server in the main thread
+            import logging
+            
+            # Configure root logger to suppress most messages
+            logging.basicConfig(level=logging.WARNING)
+            
+            # Suppress specific loggers
+            for logger_name in ['fastmcp', 'uvicorn', 'uvicorn.error', 'uvicorn.access']:
+                logger = logging.getLogger(logger_name)
+                logger.setLevel(logging.WARNING)
+            
+            # Run the MCP server
             mcp.run(
                 transport='streamable-http',
                 host=config['host'],

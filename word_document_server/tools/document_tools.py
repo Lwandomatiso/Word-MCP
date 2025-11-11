@@ -11,7 +11,7 @@ from io import BytesIO
 from typing import Dict, List, Optional, Any, Union
 from docx import Document
 from starlette.requests import Request as StarletteRequest
-from word_document_server.utils.s3_utils import generate_presigned_url
+from word_document_server.utils.s3_utils import generate_presigned_url, get_s3_client
 
 def get_base_url(request: Optional[Union[Request, StarletteRequest]] = None) -> str:
     """
@@ -263,23 +263,20 @@ temp_files = {}
 # -------------------------------
 # 3️⃣ MCP tool: create_document
 # -------------------------------
+# Create S3 client (ensure AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION in env)
+s3_client = get_s3_client()
+
 async def create_temp(
-    filename: str, 
-    title: Optional[str] = None, 
+    filename: str,
+    title: Optional[str] = None,
     author: Optional[str] = None
 ) -> dict:
     """
-    Create a Word document in memory and return a temporary download link.
-
-    Returns:
-        {"download_url": str, "file_id": str} on success
-        {"error": str} on failure
+    Create a Word document in memory, upload to S3, and return a presigned download URL.
     """
-    # Ensure .docx extension
-    if not filename.lower().endswith(".docx"):
-        filename += ".docx"
-
     try:
+        if not filename.lower().endswith(".docx"):
+            filename += ".docx"
         # Create document
         doc = Document()
         if title:
@@ -287,26 +284,35 @@ async def create_temp(
         if author:
             doc.core_properties.author = author
 
-        # (Optional) add default styles if needed
-        # ensure_heading_style(doc)
-        # ensure_table_style(doc)
-
-        # Save to BytesIO
+        # Save to memory
         buffer = BytesIO()
         doc.save(buffer)
         buffer.seek(0)
 
-        # Store in memory with UUID
+        # Unique file ID
         file_id = str(uuid.uuid4())
-        temp_files[file_id] = {
-            "filename": filename,
-            "bytes": buffer.getvalue()
-        }
+        s3_key = f"temp/{file_id}_{filename}"
 
-        # Return temporary download link
-        base_url = get_base_url()
-        download_url = f"{base_url}/mcp/download/{file_id}"
-        return {"download_url": download_url, "file_id": file_id}
+        # Upload to S3
+        bucket_name = os.getenv("S3_BUCKET_NAME")
+        if not bucket_name:
+            return {"error": "S3_BUCKET_NAME not set"}
+        
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=s3_key,
+            Body=buffer.getvalue(),
+            ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        # Generate presigned URL (valid 10 minutes)
+        presigned_url = s3_client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": bucket_name, "Key": s3_key},
+            ExpiresIn=600  # seconds
+        )
+
+        return {"download_url": presigned_url, "file_id": file_id, "filename": filename}
 
     except Exception as e:
         return {"error": f"Failed to create document: {str(e)}"}
@@ -362,16 +368,56 @@ async def load_template() -> dict:
             "bytes": docx_bytes
         }
         
-        # Return download URL
-        base_url = get_base_url()
-        download_url = f"{base_url}/mcp/download/{file_id}"
         return {
-            "download_url": download_url,
             "file_id": file_id,
             "filename": filename
         }
-        
-    except httpx.HTTPStatusError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+
     except Exception as e:
-        return {"error": f"Failed to load document: {str(e)}"}
+        return {"error": f"Failed to load template: {str(e)}"}
+
+async def upload_get_url(file_id: str, filename: str = None, expires: int = 1800) -> str:
+    """
+    Upload an in-memory document to S3 and return a presigned URL.
+    
+    Args:
+        file_id: ID of the in-memory document
+        filename: Optional name for the file in S3. If not provided, uses the original filename.
+        expires: URL expiration time in seconds (default: 600)
+        
+    Returns:
+        str: Presigned URL for the uploaded file or error message
+    """
+    if file_id not in temp_files:
+        return {"error": f"No document found with ID {file_id}"}
+    
+    bucket_name = os.getenv("S3_BUCKET_NAME")
+    if not bucket_name:
+        return {"error": "S3_BUCKET_NAME environment variable not set"}
+    
+    try:
+        # Get the file entry
+        file_entry = temp_files[file_id]
+        file_bytes = file_entry["bytes"]
+        original_filename = file_entry.get("filename", "document.docx")
+        filename = filename or original_filename
+        
+        # Generate a unique key
+        key = f"temp/{file_id}_{filename}"
+        
+        # Upload to S3
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=key,
+            Body=file_bytes,
+            ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        # Generate and return presigned URL
+        return s3_client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": bucket_name, "Key": key},
+            ExpiresIn=expires
+        )
+    except Exception as e:
+        return {"error": f"Failed to upload file: {str(e)}"}
