@@ -22,12 +22,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Expose ports
 EXPOSE 8080
 
-# Set environment variables
-ENV PORT=8080
-ENV MCP_PORT=8080
-ENV MCP_TRANSPORT=streamable-http
-ENV MCP_HOST=0.0.0.0
-ENV MCP_PATH=/mcp
 ENV PYTHONUNBUFFERED=1
 
 # Default command
